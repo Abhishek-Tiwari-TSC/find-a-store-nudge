@@ -101,11 +101,15 @@ process.on("uncaughtException", (err) => {
 });
 
 // ─────────────────────────────────────────────
-// Start server
+// Export for Vercel + listen for local
 // ─────────────────────────────────────────────
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`\n🚀 Server running on http://localhost:${PORT}`);
-    console.log(`   POST http://localhost:${PORT}/collect`);
-    console.log(`   GET  http://localhost:${PORT}/health\n`);
-});
+module.exports = app;
+
+if (require.main === module) {
+    const PORT = process.env.PORT || 3000;
+    app.listen(PORT, () => {
+        console.log(`\n🚀 Server running on http://localhost:${PORT}`);
+        console.log(`   POST http://localhost:${PORT}/collect`);
+        console.log(`   GET  http://localhost:${PORT}/health\n`);
+    });
+}
