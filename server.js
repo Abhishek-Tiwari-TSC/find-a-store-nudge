@@ -1,3 +1,4 @@
+// api/collect.js
 const express = require("express");
 const app = express();
 
@@ -15,14 +16,22 @@ const GUPSHUP_CONFIG = {
     method: "SENDMESSAGE",
 };
 
-const HYDERABAD_MSG = "Dear Customer,\n\nThis is in reference to your recent request via our bot.\n\nPlease find the relevant details below:\nNext Day Delivery – Now in Hyderabad  Get your order delivered the very next day when you shop from our exclusive collection.\n\nFeel free to reply to this message for any additional support.";
+const HYDERABAD_MSG = `Dear Customer,
+
+This is in reference to your recent request via our bot.
+
+Please find the relevant details below:
+Next Day Delivery – Now in Hyderabad  
+Get your order delivered the very next day when you shop from our exclusive collection.
+
+Feel free to reply to this message for any additional support.`;
 
 // ─────────────────────────────────────────────
 // Gupshup SMS sender
 // ─────────────────────────────────────────────
 async function sendGupshupMessage(phone) {
     try {
-        console.log("\n📲 [Gupshup] Sending message to:", phone);
+        console.log("📲 [Gupshup] Sending message to:", phone);
 
         const params = new URLSearchParams({
             userid: GUPSHUP_CONFIG.userid,
@@ -47,14 +56,14 @@ async function sendGupshupMessage(phone) {
 }
 
 // ─────────────────────────────────────────────
-// POST /collect
+// POST /collect   →  becomes  /api/collect on Vercel
 // ─────────────────────────────────────────────
-app.post("/collect", (req, res) => {
+app.post("/collect", async (req, res) => {
     try {
         const { phone, pincode, city } = req.body;
 
         if (!phone || !pincode || !city) {
-            console.warn("⚠️  [collect] Missing fields in request body:", req.body);
+            console.warn("⚠️ Missing fields:", req.body);
             return res.status(400).json({
                 success: false,
                 message: "Missing required fields: phone, pincode, city",
@@ -69,26 +78,23 @@ app.post("/collect", (req, res) => {
         const normalizedCity = city.trim().toLowerCase();
 
         if (normalizedCity === "hyderabad") {
-            console.log(`\n⏳ [collect] Hyderabad detected. Gupshup message scheduled in 5 seconds...\n`);
-            setTimeout(() => {
-                sendGupshupMessage(phone).catch((err) => {
-                    console.error("❌ [setTimeout] Unhandled error in sendGupshupMessage:", err.message);
-                });
-            }, 5 * 1000);
+            console.log("⏳ Hyderabad detected → Sending Gupshup message...");
+            // Send immediately (setTimeout is not reliable on Vercel)
+            await sendGupshupMessage(phone);
         } else {
-            console.log(`\nℹ️  [collect] City is "${city}" — no message triggered.\n`);
+            console.log(`ℹ️ City "${city}" — no message triggered.`);
         }
 
         return res.status(200).json({
             success: true,
             message: normalizedCity === "hyderabad"
-                ? "Data received. Gupshup message will be sent in 5 seconds."
+                ? "Data received. Gupshup message sent successfully."
                 : "Data received. No message triggered for this city.",
             data: { phone, pincode, city },
         });
 
     } catch (err) {
-        console.error("❌ [collect] Unexpected route error:", err.message);
+        console.error("❌ [collect] Error:", err.message);
         return res.status(500).json({
             success: false,
             message: "Internal server error. Please try again.",
@@ -96,35 +102,13 @@ app.post("/collect", (req, res) => {
     }
 });
 
-// ─────────────────────────────────────────────
 // Health check
-// ─────────────────────────────────────────────
-app.get("/health", (req, res) => {
-    res.status(200).json({ status: "ok", uptime: process.uptime() });
-});
-
-// ─────────────────────────────────────────────
-// Global crash guards
-// ─────────────────────────────────────────────
-process.on("unhandledRejection", (reason) => {
-    console.error("❌ [Process] Unhandled Promise Rejection:", reason);
-});
-
-process.on("uncaughtException", (err) => {
-    console.error("❌ [Process] Uncaught Exception:", err.message);
-    console.error("   Stack:", err.stack);
-});
-
-// ─────────────────────────────────────────────
-// Export for Vercel + listen for local
-// ─────────────────────────────────────────────
-module.exports = app;
-
-if (require.main === module) {
-    const PORT = process.env.PORT || 3000;
-    app.listen(PORT, () => {
-        console.log(`\n🚀 Server running on http://localhost:${PORT}`);
-        console.log(`   POST http://localhost:${PORT}/collect`);
-        console.log(`   GET  http://localhost:${PORT}/health\n`);
+app.get("/collect/health", (req, res) => {
+    res.status(200).json({ 
+        status: "ok", 
+        message: "Collect API is working on Vercel" 
     });
-}
+});
+
+// Important: Export the Express app for Vercel
+module.exports = app;
