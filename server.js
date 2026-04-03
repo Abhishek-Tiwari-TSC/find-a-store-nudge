@@ -4,35 +4,45 @@ const app = express();
 app.use(express.json());
 
 // ─────────────────────────────────────────────
-// WhatsApp sender (replace body with real API)
+// Config
 // ─────────────────────────────────────────────
-async function sendWhatsAppMessage(data) {
+const GUPSHUP_CONFIG = {
+    userid: "2000233295",
+    password: "t6yZNm2q",
+    v: "1.1",
+    format: "json",
+    msg_type: "TEXT",
+    method: "SENDMESSAGE",
+};
+
+const HYDERABAD_MSG = "Dear Customer,\n\nThis is in reference to your recent request via our bot.\n\nPlease find the relevant details below:\nNext Day Delivery – Now in Hyderabad  Get your order delivered the very next day when you shop from our exclusive collection.\n\nFeel free to reply to this message for any additional support.";
+
+// ─────────────────────────────────────────────
+// Gupshup SMS sender
+// ─────────────────────────────────────────────
+async function sendGupshupMessage(phone) {
     try {
-        console.log("\n📲 [WhatsApp] Triggering message for:", data.phone);
-        console.log("   Pincode :", data.pincode);
-        console.log("   City    :", data.city);
-        console.log("   (Replace this block with your actual WhatsApp API call)\n");
+        console.log("\n📲 [Gupshup] Sending message to:", phone);
 
-        // ── Uncomment and fill in when you have the API ──
-        // const response = await fetch("https://your-whatsapp-api.com/send", {
-        //     method: "POST",
-        //     headers: {
-        //         "Content-Type": "application/json",
-        //         Authorization: "Bearer YOUR_TOKEN",
-        //     },
-        //     body: JSON.stringify({
-        //         phone: data.phone,
-        //         message: `Hello from ${data.city}!`,
-        //     }),
-        // });
-        // if (!response.ok) {
-        //     throw new Error(`WhatsApp API responded with status ${response.status}`);
-        // }
-        // const result = await response.json();
-        // console.log("[WhatsApp] API response:", result);
+        const params = new URLSearchParams({
+            userid: GUPSHUP_CONFIG.userid,
+            password: GUPSHUP_CONFIG.password,
+            send_to: phone,
+            v: GUPSHUP_CONFIG.v,
+            format: GUPSHUP_CONFIG.format,
+            msg_type: GUPSHUP_CONFIG.msg_type,
+            method: GUPSHUP_CONFIG.method,
+            msg: HYDERABAD_MSG,
+        });
 
+        const url = `https://mediaapi.smsgupshup.com/GatewayAPI/rest?${params.toString()}`;
+
+        const response = await fetch(url);
+        const text = await response.text();
+
+        console.log("✅ [Gupshup] Response:", text);
     } catch (err) {
-        console.error("❌ [WhatsApp] Failed to send message:", err.message);
+        console.error("❌ [Gupshup] Failed to send message:", err.message);
     }
 }
 
@@ -51,24 +61,30 @@ app.post("/collect", (req, res) => {
             });
         }
 
-        const data = { phone, pincode, city };
-
         console.log("\n✅ [collect] Data received:");
         console.log("   Phone   :", phone);
         console.log("   Pincode :", pincode);
         console.log("   City    :", city);
-        console.log(`\n⏳ [collect] WhatsApp message scheduled in 20 seconds...\n`);
 
-        setTimeout(() => {
-            sendWhatsAppMessage(data).catch((err) => {
-                console.error("❌ [setTimeout] Unhandled error in sendWhatsAppMessage:", err.message);
-            });
-        }, 20 * 1000);
+        const normalizedCity = city.trim().toLowerCase();
+
+        if (normalizedCity === "hyderabad") {
+            console.log(`\n⏳ [collect] Hyderabad detected. Gupshup message scheduled in 5 seconds...\n`);
+            setTimeout(() => {
+                sendGupshupMessage(phone).catch((err) => {
+                    console.error("❌ [setTimeout] Unhandled error in sendGupshupMessage:", err.message);
+                });
+            }, 5 * 1000);
+        } else {
+            console.log(`\nℹ️  [collect] City is "${city}" — no message triggered.\n`);
+        }
 
         return res.status(200).json({
             success: true,
-            message: "Data received. WhatsApp message will be sent in 20 seconds.",
-            data,
+            message: normalizedCity === "hyderabad"
+                ? "Data received. Gupshup message will be sent in 5 seconds."
+                : "Data received. No message triggered for this city.",
+            data: { phone, pincode, city },
         });
 
     } catch (err) {
@@ -81,14 +97,14 @@ app.post("/collect", (req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// Health check — useful for uptime monitoring
+// Health check
 // ─────────────────────────────────────────────
 app.get("/health", (req, res) => {
     res.status(200).json({ status: "ok", uptime: process.uptime() });
 });
 
 // ─────────────────────────────────────────────
-// Global crash guards — keep the server alive
+// Global crash guards
 // ─────────────────────────────────────────────
 process.on("unhandledRejection", (reason) => {
     console.error("❌ [Process] Unhandled Promise Rejection:", reason);
@@ -97,7 +113,6 @@ process.on("unhandledRejection", (reason) => {
 process.on("uncaughtException", (err) => {
     console.error("❌ [Process] Uncaught Exception:", err.message);
     console.error("   Stack:", err.stack);
-    // Log but do NOT exit — keeps server alive
 });
 
 // ─────────────────────────────────────────────
