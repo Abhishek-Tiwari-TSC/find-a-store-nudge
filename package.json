@@ -11,6 +11,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@vercel/functions": "^3.4.3",
     "express": "^5.2.1"
   }
 }
