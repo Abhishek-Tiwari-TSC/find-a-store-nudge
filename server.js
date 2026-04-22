@@ -41,7 +41,7 @@ async function sendGupshupMessage(phone, city) {
 }
 
 
-app.post("/collect", (req, res) => {
+app.post("/collect", async (req, res) => {
     try {
         const { phone, pincode, city } = req.body;
 
@@ -61,12 +61,8 @@ app.post("/collect", (req, res) => {
         const normalizedCity = city.trim().toLowerCase();
 
         if (normalizedCity === "hyderabad") {
-            console.log(`\n⏳ [collect] Hyderabad detected. Gupshup message scheduled in 5 seconds...\n`);
-            setTimeout(() => {
-                sendGupshupMessage(phone, city.trim()).catch((err) => {
-                    console.error("❌ [setTimeout] Unhandled error in sendGupshupMessage:", err.message);
-                });
-            }, 5 * 1000);
+            console.log(`\n⏳ [collect] Hyderabad detected. Sending Gupshup message...\n`);
+            await sendGupshupMessage(phone, city.trim());
         } else {
             console.log(`\nℹ️  [collect] City is "${city}" — no message triggered.\n`);
         }
@@ -74,7 +70,7 @@ app.post("/collect", (req, res) => {
         return res.status(200).json({
             success: true,
             message: normalizedCity === "hyderabad"
-                ? "Data received. Gupshup message will be sent in 5 seconds."
+                ? "Data received. Gupshup message sent."
                 : "Data received. No message triggered for this city.",
             data: { phone, pincode, city },
         });
