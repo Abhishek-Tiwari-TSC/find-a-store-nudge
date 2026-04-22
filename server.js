@@ -1,5 +1,4 @@
 const express = require("express");
-const { waitUntil } = require("@vercel/functions");
 const app = express();
 
 app.use(express.json());
@@ -13,11 +12,11 @@ const GUPSHUP_CONFIG = {
     method: "SENDMESSAGE",
 };
 
-const HYDERABAD_MSG = "Dear Customer,\n\nThis is in reference to your recent request via our bot.\n\nPlease find the relevant details below:\nNext Day Delivery – Now in Hyderabad  Get your order delivered the very next day when you shop from our exclusive collection.\n\nFeel free to reply to this message for any additional support.";
-
-async function sendGupshupMessage(phone) {
+async function sendGupshupMessage(phone, city) {
     try {
         console.log("\n📲 [Gupshup] Sending message to:", phone);
+
+        const msg = `Hi,\n\nNext day delivery is now available in ${city}.\n\nFor any assistance or to know more, please visit your nearest store`;
 
         const params = new URLSearchParams({
             userid: GUPSHUP_CONFIG.userid,
@@ -27,7 +26,7 @@ async function sendGupshupMessage(phone) {
             format: GUPSHUP_CONFIG.format,
             msg_type: GUPSHUP_CONFIG.msg_type,
             method: GUPSHUP_CONFIG.method,
-            msg: HYDERABAD_MSG,
+            msg: msg,
         });
 
         const url = `https://mediaapi.smsgupshup.com/GatewayAPI/rest?${params.toString()}`;
@@ -63,16 +62,11 @@ app.post("/collect", (req, res) => {
 
         if (normalizedCity === "hyderabad") {
             console.log(`\n⏳ [collect] Hyderabad detected. Gupshup message scheduled in 5 seconds...\n`);
-
-            // waitUntil keeps the Vercel function alive in the background
-            // even after the response has already been sent to the client
-            waitUntil(
-                new Promise((resolve) => setTimeout(resolve, 5000))
-                    .then(() => sendGupshupMessage(phone))
-                    .catch((err) => {
-                        console.error("❌ [waitUntil] Unhandled error in sendGupshupMessage:", err.message);
-                    })
-            );
+            setTimeout(() => {
+                sendGupshupMessage(phone, city.trim()).catch((err) => {
+                    console.error("❌ [setTimeout] Unhandled error in sendGupshupMessage:", err.message);
+                });
+            }, 5 * 1000);
         } else {
             console.log(`\nℹ️  [collect] City is "${city}" — no message triggered.\n`);
         }
