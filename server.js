@@ -1,4 +1,5 @@
 const express = require("express");
+const { waitUntil } = require("@vercel/functions");
 const app = express();
 
 app.use(express.json());
@@ -62,9 +63,12 @@ app.post("/collect", async (req, res) => {
         const normalizedCity = city.trim().toLowerCase();
 
         if (normalizedCity === "hyderabad") {
-            console.log(`\n⏳ [collect] Hyderabad detected. Waiting 10 seconds before sending...\n`);
-            await sleep(10 * 1000);
-            await sendGupshupMessage(phone, city.trim());
+            console.log(`\n⏳ [collect] Hyderabad detected. Message will be sent after 10 seconds...\n`);
+
+            // Respond immediately, but keep function alive for the delay + send
+            waitUntil(
+                sleep(10 * 1000).then(() => sendGupshupMessage(phone, city.trim()))
+            );
         } else {
             console.log(`\nℹ️  [collect] City is "${city}" — no message triggered.\n`);
         }
@@ -72,7 +76,7 @@ app.post("/collect", async (req, res) => {
         return res.status(200).json({
             success: true,
             message: normalizedCity === "hyderabad"
-                ? "Data received. Gupshup message sent after 10 second delay."
+                ? "Data received. Gupshup message will be sent in 10 seconds."
                 : "Data received. No message triggered for this city.",
             data: { phone, pincode, city },
         });
