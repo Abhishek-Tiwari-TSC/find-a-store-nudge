@@ -12,6 +12,8 @@ const GUPSHUP_CONFIG = {
     method: "SENDMESSAGE",
 };
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 async function sendGupshupMessage(phone, city) {
     try {
         console.log("\n📲 [Gupshup] Sending message to:", phone);
@@ -40,7 +42,6 @@ async function sendGupshupMessage(phone, city) {
     }
 }
 
-
 app.post("/collect", async (req, res) => {
     try {
         const { phone, pincode, city } = req.body;
@@ -61,7 +62,8 @@ app.post("/collect", async (req, res) => {
         const normalizedCity = city.trim().toLowerCase();
 
         if (normalizedCity === "hyderabad") {
-            console.log(`\n⏳ [collect] Hyderabad detected. Sending Gupshup message...\n`);
+            console.log(`\n⏳ [collect] Hyderabad detected. Waiting 10 seconds before sending...\n`);
+            await sleep(10 * 1000);
             await sendGupshupMessage(phone, city.trim());
         } else {
             console.log(`\nℹ️  [collect] City is "${city}" — no message triggered.\n`);
@@ -70,7 +72,7 @@ app.post("/collect", async (req, res) => {
         return res.status(200).json({
             success: true,
             message: normalizedCity === "hyderabad"
-                ? "Data received. Gupshup message sent."
+                ? "Data received. Gupshup message sent after 10 second delay."
                 : "Data received. No message triggered for this city.",
             data: { phone, pincode, city },
         });
@@ -117,6 +119,5 @@ if (require.main === module) {
         console.log(`Press Ctrl + C to stop the server.\n`);
     });
 } else {
-    // For Vercel / Serverless
     module.exports = app;
 }
