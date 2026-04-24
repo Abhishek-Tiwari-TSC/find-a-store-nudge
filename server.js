@@ -19,7 +19,7 @@ async function sendGupshupMessage(phone, city) {
     try {
         console.log("\n📲 [Gupshup] Sending message to:", phone);
 
-        const msg = `Hi,\n\nNext day delivery is now available in ${city}.\n\nFor any assistance or to know more, please visit your nearest store`;
+        const msg = `Hi,\n\nGuaranteed Next Day Delivery is now available in ${city}.\n\nFor any assistance or to know more, please visit your nearest store`;
 
         const params = new URLSearchParams({
             userid: GUPSHUP_CONFIG.userid,
@@ -43,6 +43,34 @@ async function sendGupshupMessage(phone, city) {
     }
 }
 
+async function sendMumbaiMessage(phone, city) {
+    try {
+        console.log("\n📲 [Gupshup] Sending Mumbai message to:", phone);
+
+        const msg = `Hi,\n\nNo Cost EMI is now available in ${city}.\n\nFor any assistance or to know more, please visit your nearest store`;
+
+        const params = new URLSearchParams({
+            userid: GUPSHUP_CONFIG.userid,
+            password: GUPSHUP_CONFIG.password,
+            send_to: phone,
+            v: GUPSHUP_CONFIG.v,
+            format: GUPSHUP_CONFIG.format,
+            msg_type: GUPSHUP_CONFIG.msg_type,
+            method: GUPSHUP_CONFIG.method,
+            msg: msg,
+        });
+
+        const url = `https://mediaapi.smsgupshup.com/GatewayAPI/rest?${params.toString()}`;
+
+        const response = await fetch(url);
+        const text = await response.text();
+
+        console.log("✅ [Gupshup] Response:", text);
+    } catch (err) {
+        console.error("❌ [Gupshup] Failed to send Mumbai message:", err.message);
+    }
+}
+
 app.post("/collect", async (req, res) => {
     try {
         const { phone, pincode, city } = req.body;
@@ -62,12 +90,18 @@ app.post("/collect", async (req, res) => {
 
         const normalizedCity = city.trim().toLowerCase();
 
-        if (normalizedCity === "hyderabad") {
-            console.log(`\n⏳ [collect] Hyderabad detected. Message will be sent after 10 seconds...\n`);
+        if (normalizedCity === "hyderabad" || normalizedCity === "bangalore") {
+            console.log(`\n⏳ [collect] ${city} detected. Message will be sent after 10 seconds...\n`);
 
             // Respond immediately, but keep function alive for the delay + send
             waitUntil(
                 sleep(10 * 1000).then(() => sendGupshupMessage(phone, city.trim()))
+            );
+        } else if (normalizedCity === "mumbai") {
+            console.log(`\n⏳ [collect] Mumbai detected. Message will be sent after 10 seconds...\n`);
+
+            waitUntil(
+                sleep(10 * 1000).then(() => sendMumbaiMessage(phone, city.trim()))
             );
         } else {
             console.log(`\nℹ️  [collect] City is "${city}" — no message triggered.\n`);
@@ -75,7 +109,7 @@ app.post("/collect", async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: normalizedCity === "hyderabad"
+            message: (normalizedCity === "hyderabad" || normalizedCity === "bangalore" || normalizedCity === "mumbai")
                 ? "Data received. Gupshup message will be sent in 10 seconds."
                 : "Data received. No message triggered for this city.",
             data: { phone, pincode, city },
