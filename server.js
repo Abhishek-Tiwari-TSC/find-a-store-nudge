@@ -90,7 +90,7 @@ app.post("/collect", async (req, res) => {
 
         const normalizedCity = city.trim().toLowerCase();
 
-        if (normalizedCity === "hyderabad" || normalizedCity === "bangalore") {
+        if (normalizedCity === "hyderabad" || normalizedCity === "bengaluru") {
             console.log(`\n⏳ [collect] ${city} detected. Message will be sent after 10 seconds...\n`);
 
             // Respond immediately, but keep function alive for the delay + send
