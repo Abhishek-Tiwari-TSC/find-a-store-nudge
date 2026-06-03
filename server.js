@@ -1,8 +1,15 @@
 const express = require("express");
 const { waitUntil } = require("@vercel/functions");
+
+// Load .env silently (suppress injection message)
+require("dotenv").config({ quiet: true });
+
 const app = express();
 
 app.use(express.json());
+
+// API Key
+const API_KEY = process.env.X_API_KEY;
 
 const GUPSHUP_CONFIG = {
     userid: "2000233295",
@@ -17,8 +24,6 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function sendGupshupMessage(phone, city) {
     try {
-        console.log("\n📲 [Gupshup] Sending message to:", phone);
-
         const msg = `Hi,\n\nGuaranteed Next Day Delivery is now available in ${city}.\n\nFor any assistance or to know more, please visit your nearest store`;
 
         const params = new URLSearchParams({
@@ -37,16 +42,14 @@ async function sendGupshupMessage(phone, city) {
         const response = await fetch(url);
         const text = await response.text();
 
-        console.log("✅ [Gupshup] Response:", text);
+        console.log("[Gupshup] Response:", text);
     } catch (err) {
-        console.error("❌ [Gupshup] Failed to send message:", err.message);
+        console.error("[Gupshup] Failed to send message:", err.message);
     }
 }
 
 async function sendMumbaiMessage(phone, city) {
     try {
-        console.log("\n📲 [Gupshup] Sending Mumbai message to:", phone);
-
         const msg = `Hi,\n\nNo Cost EMI is now available in ${city}.\n\nFor any assistance or to know more, please visit your nearest store`;
 
         const params = new URLSearchParams({
@@ -65,58 +68,66 @@ async function sendMumbaiMessage(phone, city) {
         const response = await fetch(url);
         const text = await response.text();
 
-        console.log("✅ [Gupshup] Response:", text);
+        console.log("[Gupshup] Response:", text);
     } catch (err) {
-        console.error("❌ [Gupshup] Failed to send Mumbai message:", err.message);
+        console.error("[Gupshup] Failed to send Mumbai message:", err.message);
     }
-}
+};
 
-app.post("/collect", async (req, res) => {
+// API Key Middleware
+const authenticateAPI = (req, res, next) => {
+    const providedKey = req.headers["x-api-key"];
+
+    if (!API_KEY) {
+        return res.status(500).json({
+            success: false,
+            message: "Server configuration error"
+        });
+    }
+
+    if (!providedKey || providedKey !== API_KEY) {
+        return res.status(403).json({
+            success: false,
+            message: "Forbidden: Invalid or missing x-api-key"
+        });
+    }
+
+    next();
+};
+
+app.post("/collect", authenticateAPI, async (req, res) => {
     try {
         const { phone, pincode, city } = req.body;
 
         if (!phone || !pincode || !city) {
-            console.warn("⚠️  [collect] Missing fields in request body:", req.body);
             return res.status(400).json({
                 success: false,
                 message: "Missing required fields: phone, pincode, city",
             });
         }
 
-        console.log("\n✅ [collect] Data received:");
-        console.log("   Phone   :", phone);
-        console.log("   Pincode :", pincode);
-        console.log("   City    :", city);
-
         const normalizedCity = city.trim().toLowerCase();
 
         if (normalizedCity === "hyderabad" || normalizedCity === "bengaluru") {
-            console.log(`\n⏳ [collect] ${city} detected. Message will be sent after 10 seconds...\n`);
-
-            // Respond immediately, but keep function alive for the delay + send
             waitUntil(
                 sleep(10 * 1000).then(() => sendGupshupMessage(phone, city.trim()))
             );
         } else if (normalizedCity === "mumbai") {
-            console.log(`\n⏳ [collect] Mumbai detected. Message will be sent after 10 seconds...\n`);
-
             waitUntil(
                 sleep(10 * 1000).then(() => sendMumbaiMessage(phone, city.trim()))
             );
-        } else {
-            console.log(`\nℹ️  [collect] City is "${city}" — no message triggered.\n`);
         }
 
         return res.status(200).json({
             success: true,
-            message: (normalizedCity === "hyderabad" || normalizedCity === "bangalore" || normalizedCity === "mumbai")
+            message: (normalizedCity === "hyderabad" || normalizedCity === "bengaluru" || normalizedCity === "mumbai")
                 ? "Data received. Gupshup message will be sent in 10 seconds."
                 : "Data received. No message triggered for this city.",
             data: { phone, pincode, city },
         });
 
     } catch (err) {
-        console.error("❌ [collect] Unexpected route error:", err.message);
+        console.error("Unexpected error in /collect:", err.message);
         return res.status(500).json({
             success: false,
             message: "Internal server error. Please try again.",
@@ -124,38 +135,28 @@ app.post("/collect", async (req, res) => {
     }
 });
 
-// ─────────────────────────────────────────────
-// Health check
-// ─────────────────────────────────────────────
 app.get("/health", (req, res) => {
-    res.status(200).json({ status: "ok", uptime: process.uptime() });
+    res.status(200).json({
+        status: "ok",
+        uptime: process.uptime(),
+        apiKeyConfigured: !!API_KEY
+    });
 });
 
-// ─────────────────────────────────────────────
-// Global crash guards
-// ─────────────────────────────────────────────
 process.on("unhandledRejection", (reason) => {
-    console.error("❌ [Process] Unhandled Promise Rejection:", reason);
+    console.error("Unhandled Promise Rejection:", reason);
 });
 
 process.on("uncaughtException", (err) => {
-    console.error("❌ [Process] Uncaught Exception:", err.message);
-    console.error("   Stack:", err.stack);
+    console.error("Uncaught Exception:", err.message);
+    console.error("Stack:", err.stack);
 });
 
-// ─────────────────────────────────────────────
-// Export for Vercel + listen for local
-// ─────────────────────────────────────────────
 module.exports = app;
 
 if (require.main === module) {
     const PORT = process.env.PORT || 3000;
     app.listen(PORT, () => {
-        console.log(`\n🚀 Server running on http://localhost:${PORT}`);
-        console.log(`   POST http://localhost:${PORT}/collect`);
-        console.log(`   GET  http://localhost:${PORT}/health\n`);
-        console.log(`Press Ctrl + C to stop the server.\n`);
+        console.log(`Server running on http://localhost:${PORT}`);
     });
-} else {
-    module.exports = app;
 }
