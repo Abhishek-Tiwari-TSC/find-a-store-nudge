@@ -8,9 +8,6 @@ const app = express();
 
 app.use(express.json());
 
-// API Key
-const API_KEY = process.env.X_API_KEY;
-
 const GUPSHUP_CONFIG = {
     userid: "2000233295",
     password: "t6yZNm2q",
@@ -74,28 +71,7 @@ async function sendMumbaiMessage(phone, city) {
     }
 };
 
-// API Key Middleware
-const authenticateAPI = (req, res, next) => {
-    const providedKey = req.headers["x-api-key"];
-
-    if (!API_KEY) {
-        return res.status(500).json({
-            success: false,
-            message: "Server configuration error"
-        });
-    }
-
-    if (!providedKey || providedKey !== API_KEY) {
-        return res.status(403).json({
-            success: false,
-            message: "Forbidden: Invalid or missing x-api-key"
-        });
-    }
-
-    next();
-};
-
-app.post("/collect", authenticateAPI, async (req, res) => {
+app.post("/collect", async (req, res) => {
     try {
         const { phone, pincode, city } = req.body;
 
@@ -139,7 +115,6 @@ app.get("/health", (req, res) => {
     res.status(200).json({
         status: "ok",
         uptime: process.uptime(),
-        apiKeyConfigured: !!API_KEY
     });
 });
 
