@@ -52,6 +52,7 @@ async function sendMumbaiMessage(phone, city) {
         const params = new URLSearchParams({
             userid: GUPSHUP_CONFIG.userid,
             password: GUPSHUP_CONFIG.password,
+            password: GUPSHUP_CONFIG.password,
             send_to: phone,
             v: GUPSHUP_CONFIG.v,
             format: GUPSHUP_CONFIG.format,
@@ -96,7 +97,7 @@ app.post("/collect", async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: (normalizedCity === "hyderabad" || normalizedCity === "bengaluru" || normalizedCity === "mumbai")
+            message: (normalizedCity === "" || normalizedCity === "" || normalizedCity === "mumbai")
                 ? "Data received. Gupshup message will be sent in 10 seconds."
                 : "Data received. No message triggered for this city.",
             data: { phone, pincode, city },
