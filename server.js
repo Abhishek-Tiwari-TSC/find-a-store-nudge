@@ -87,7 +87,7 @@ app.post("/collect", async (req, res) => {
 
         if (normalizedCity === "hyderabad" || normalizedCity === "bengaluru") {
             waitUntil(
-                sleep(10 * 1000).then(() => sendGupshupMessage(phone, city.trim()))
+                sleep(10 * 1000).then(() => sendMumbaiMessage(phone, city.trim()))
             );
         } else if (normalizedCity === "mumbai") {
             waitUntil(
@@ -101,6 +101,7 @@ app.post("/collect", async (req, res) => {
                 ? "Data received. Gupshup message will be sent in 10 seconds."
                 : "Data received. No message triggered for this city.",
             data: { phone, pincode, city },
+            data: {},
         });
 
     } catch (err) {
