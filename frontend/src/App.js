@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 
-const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:3000";
-
+const API_BASE = "https://find-a-store-nudge.vercel.app";
 const TEMPLATES = [
   { value: "no_cost_emi", label: "No Cost EMI", message: "Hi,\n\nNo Cost EMI is now available in {city}.\n\nFor any assistance or to know more, please visit your nearest store" },
   { value: "next_day_delivery", label: "Guaranteed Next Day Delivery", message: "Hi,\n\nGuaranteed Next Day Delivery is now available in {city}.\n\nFor any assistance or to know more, please visit your nearest store" },
