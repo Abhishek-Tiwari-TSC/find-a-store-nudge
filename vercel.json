@@ -19,7 +19,11 @@
             "dest": "backend/app.js"
         },
         {
-            "src": "/admin/(.*)",
+            "src": "/admin/campaigns",
+            "dest": "backend/app.js"
+        },
+        {
+            "src": "/admin/campaigns/(.*)",
             "dest": "backend/app.js"
         },
         {
